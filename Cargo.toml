@@ -1,0 +1,10 @@
+[package]
+name = "mercado_csv"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chrono = "0.4.42"
+csv = "1.2.1"
+rfd = "0.15.4"
+serde = { version = "1.0.228", features = ["derive"] }
