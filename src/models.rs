@@ -8,7 +8,7 @@ use std::io::{BufRead, BufReader};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]   
 pub struct Ordem {
-    // --- CAMPOS PRIVADOS ---
+
     #[serde(rename = "Corretora")]
     pub corretora: Option<String>, 
     
