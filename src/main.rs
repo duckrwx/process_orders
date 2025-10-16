@@ -1,33 +1,67 @@
 mod models;
 mod task_manager;
+mod arq_load;
+mod normalize_json;
+mod raiz_rapidomacd5_2st;
+mod enum_acao;
+mod action;
 
 use crate::task_manager::TaskManager;
-use rfd::FileDialog;
-use std::process;
-use crate::models::Ordem;
+use crate::normalize_json::{normalize_json, normalize_by_action};
+use crate::action::agrupar_ordens_por_ativo;
+use enum_acao::Acao;
+
 fn main() {
-    println!("Selecione o arquivo CSV de ordens:");
+    let file_path_str = arq_load::arq_load();
     
-    let file_path = match FileDialog::new()
-        .add_filter("Todos os arquivos", &["*"])
-        .pick_file()
-    {
-        Some(path) => path,
-        None => {
-            println!("❌ Nenhum arquivo selecionado. Encerrando...");
-            return;  // 👈 Sai graciosamente sem panic
+    match TaskManager::new(file_path_str) {
+        Ok(manager) => {
+            // Passo 1: Salvar um arquivo geral com TODAS as ordens.
+            // Esta parte já estava correta.
+            println!("\n--- 💾 Salvando arquivo geral com todas as ordens ---");
+            match normalize_json(&manager.tasks) {
+                Ok(_) => {}, // Se der certo, não faz nada.
+                Err(e) => {
+                    eprintln!("❌ Erro ao salvar JSON geral: {}", e);
+                    // Decidi não sair do programa aqui para que ele continue e tente salvar os arquivos individuais.
+                }
+            }
+
+            // Passo 2: Agrupar as ordens.
+            let acoes_agrupadas = agrupar_ordens_por_ativo(&manager);
+
+            println!("\n--- 💾 Salvando arquivos individuais para cada ativo ---");
+            // Passo 3: Iterar sobre os grupos e salvar cada um.
+            for acao in acoes_agrupadas {
+                match acao {
+                    // Para o caso COGN3...
+                    Acao::COGN3(ordens) => {
+                        // 👇 ADICIONADO: Chamamos a função para salvar o arquivo específico de COGN3.
+                        if let Err(e) = normalize_by_action(&ordens, "COGN3") {
+                            eprintln!("❌ Erro ao salvar JSON para COGN3: {}", e);
+                        }
+                    }
+                    // Para o caso WINV25...
+                    Acao::WINV25(ordens) => {
+                        // 👇 ADICIONADO: Chamamos a função para salvar o arquivo específico de WINV25.
+                        if let Err(e) = normalize_by_action(&ordens, "WINV25") {
+                            eprintln!("❌ Erro ao salvar JSON para WINV25: {}", e);
+                        }
+                    }
+                    // Para o caso AAPL34...
+                    Acao::AAPL34(ordens) => {
+                        // 👇 ADICIONADO: Chamamos a função para salvar o arquivo específico de AAPL34.
+                        if let Err(e) = normalize_by_action(&ordens, "AAPL34") {
+                            eprintln!("❌ Erro ao salvar JSON para AAPL34: {}", e);
+                        }
+                    }
+                }
+            }
+            println!("\n🎉 Processo de salvamento concluído!");
+        },
+        Err(e) => {
+            eprintln!("❌ Erro ao carregar ordens: {}", e);
+            std::process::exit(1);
         }
     };
-    
-    let file_path_str = file_path.to_str()
-        .expect("Caminho inválido");
-    
-    println!("✅ Arquivo selecionado: {}", file_path_str);
-
-    let loaded_orders: Vec<Ordem> = Ordem::stream_from_csv(file_path_str)
-        .expect("Erro ao abrir CSV")
-        .collect::<Result<Vec<_>, _>>()
-        .expect("Erro ao ler linhas do CSV");
-
-    println!("📊 Total de ordens carregadas: {}", loaded_orders.len());
 }

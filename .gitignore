@@ -1,1 +1,14 @@
-/target
+# Arquivos de dados locais
+*.csv
+
+# Pasta com arquivos gerados (JSONs)
+/output/
+
+# Pasta de compilação do Rust
+/target/
+
+# Arquivos de log
+*.log
+
+# Arquivos de ambiente (para senhas, etc.)
+.env

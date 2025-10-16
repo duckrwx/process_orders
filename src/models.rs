@@ -1,65 +1,101 @@
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::error::Error;
+use csv::ReaderBuilder;
+use encoding_rs_io::DecodeReaderBytesBuilder;
+use encoding_rs::WINDOWS_1252;
+use std::io::{BufRead, BufReader};
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "PascalCase")]
+#[derive(Debug, Deserialize, Serialize, Clone)]   
 pub struct Ordem {
     // --- CAMPOS PRIVADOS ---
     #[serde(rename = "Corretora")]
-    pub corretora: String,
+    pub corretora: Option<String>, 
+    
     #[serde(rename = "Conta")]
-    pub conta: i64,
+    pub conta: Option<String>,  
+    
     #[serde(rename = "Titular")]
-    pub titular: String,
+    pub titular: Option<String>,  
+    
     #[serde(rename = "ClOrdID")]
-    pub cl_ord_id: String,
+    pub cl_ord_id: Option<String>,  
+    
     #[serde(rename = "Ativo")]
-    pub ativo: String,
+    pub ativo: Option<String>,  
+    
     #[serde(rename = "Lado")]
-    pub lado: String,
-
-    // --- CAMPOS PÚBLICOS ---
+    pub lado: Option<String>,  
+    
     #[serde(rename = "Status")]
-    pub status: String,
+    pub status: String, 
+    
     #[serde(rename = "Criação")]
     pub criacao: String,
+    
     #[serde(rename = "Última Atualização")]
-    pub ultima_atualizacao: String,
+    pub ultima_atualizacao: Option<String>,  
+    
     #[serde(rename = "Preço")]
-    pub preco: String,
+    pub preco: Option<String>,
+    
     #[serde(rename = "Preço Stop")]
-    pub preco_stop: String,
+    pub preco_stop: Option<String>,
+    
     #[serde(rename = "Qtd")]
-    pub qtd: i64,
+    pub qtd: Option<String>,
+    
     #[serde(rename = "Preço Médio")]
-    pub preco_medio: String,
+    pub preco_medio: Option<String>,
+    
     #[serde(rename = "Qtd Executada")]
-    pub qtd_executada: i64,
+    pub qtd_executada: Option<String>,
+    
     #[serde(rename = "Qtd restante")]
-    pub qtd_restante: i64,
+    pub qtd_restante: Option<String>,
+    
     #[serde(rename = "Total")]
-    pub total: String,
+    pub total: Option<String>,  
+    
     #[serde(rename = "Total Executado")]
-    pub total_executado: String,
+    pub total_executado: Option<String>,
+    
     #[serde(rename = "Validade")]
-    pub validade: String,
+    pub validade: Option<String>,  
+    
     #[serde(rename = "Data Validade")]
-    pub data_validade: String,
+    pub data_validade: Option<String>,
+    
     #[serde(rename = "Estratégia")]
-    pub estrategia: String,
+    pub estrategia: Option<String>,  
+    
     #[serde(rename = "Mensagem")]
-    pub mensagem: String,
+    pub mensagem: Option<String>,
+    
     #[serde(rename = "Carteira")]
-    pub carteira: String,
+    pub carteira: Option<String>,  
 }
+
 impl Ordem {
-    pub fn stream_from_csv(path: &str) -> Result<impl Iterator<Item = Result<Ordem, csv::Error>>, Box<dyn Error>> {
-        {
-            let reader = csv::ReaderBuilder::new()
-                .delimiter(b';')
-                .from_path(path)?;
-            Ok(reader.into_deserialize())
-        }
+    pub fn stream_from_csv(path: String) -> Result<impl Iterator<Item = Result<Ordem, csv::Error>>, Box<dyn Error>> {
+        let file = File::open(path)?;
+        
+        let transcoded = DecodeReaderBytesBuilder::new()
+            .encoding(Some(WINDOWS_1252))
+            .build(file);
+        
+        let mut buf_reader = BufReader::new(transcoded);
+        
+        let mut first_line = String::new();
+        buf_reader.read_line(&mut first_line)?;
+        
+        let reader = ReaderBuilder::new()
+            .delimiter(b';')
+            .has_headers(true)
+            .flexible(true)
+            .trim(csv::Trim::All)
+            .from_reader(buf_reader);
+        
+        Ok(reader.into_deserialize())
     }
 }
